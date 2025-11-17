@@ -462,6 +462,112 @@ def product_detail(request, title):
         'tryon_url': tryon_url,     # <-- IMPORTANT
     })
 
+def product_detail2(request, title):
+    product = get_object_or_404(Product, Title=title)
+    reviews = Review.objects.filter(product=product).order_by('-id')
+    tryon_url = None  # default
+
+    # ------------------------------------------------
+    # 1️⃣ TRY-ON FORM HANDLE
+    # ------------------------------------------------
+    if "tryon_submit" in request.POST:
+        if "person_image" in request.FILES:
+            person_img = request.FILES["person_image"]
+
+            fs = FileSystemStorage()
+            person_path = fs.save("tryon/user.jpg", person_img)
+            full_person_path = settings.MEDIA_ROOT + "/" + person_path
+
+            garment_path = product.image.path
+
+            url = "https://api.tryona.com/v1/tryon/simple"
+            headers = {
+                "accept": "application/json",
+                "tokenapi": API_KEY
+            }
+            files = {
+                "person_file": ("person.jpg", open(full_person_path, "rb"), "image/jpeg"),
+                "garment_file": ("garment.jpg", open(garment_path, "rb"), "image/jpeg"),
+            }
+
+            response = requests.post(url, headers=headers, files=files)
+
+            if response.status_code == 200:
+                tryon_url = response.json().get("tryonImageUrl")
+            else:
+                messages.error(request, "Try-On failed. Please try again.")
+
+    # ------------------------------------------------
+    # 2️⃣ ADD TO CART / BUY NOW
+    # ------------------------------------------------
+    if 'buy' in request.POST or 'cart' in request.POST:
+        quantity = int(request.POST.get('quantity', 1))
+
+        if request.user.is_authenticated:
+            cart_item, created = CartItem.objects.get_or_create(
+                user=request.user,
+                product=product,
+                defaults={'quantity': quantity}
+            )
+
+            if not created:
+                if cart_item.quantity + quantity > product.stock:
+                    messages.error(request, "Not enough stock.")
+                else:
+                    cart_item.quantity += quantity
+                    cart_item.save()
+                    return redirect('cart_view')
+            else:
+                if quantity > product.stock:
+                    messages.error(request, "Out of stock")
+                else:
+                    return redirect('cart_view')
+        else:
+            messages.error(request, "You must log in to add items to cart.")
+            return redirect('login')
+
+
+    # ------------------------------------------------
+    # 3️⃣ ADD REVIEW LOGIC
+    # ------------------------------------------------
+    if 'submit_review' in request.POST:
+        Review.objects.create(
+            name=request.POST['name'],
+            email=request.POST['email'],
+            product=product,
+            review=request.POST['reviews']
+        )
+        messages.success(request, "Review submitted!")
+
+    # ------------------------------------------------
+    # 4️⃣ RECOMMENDED PRODUCTS LOGIC
+    # ------------------------------------------------
+    category = product.category.lower().strip()
+    style = product.style.strip()
+
+    if category == "top":
+        opposite_category = "bottom"
+    elif category == "bottom":
+        opposite_category = "top"
+    else:
+        opposite_category = None
+
+    if opposite_category:
+        recommended_products = Product.objects.filter(
+            category__iexact=opposite_category,
+            style__iexact=style
+        ).exclude(id=product.id)
+    else:
+        recommended_products = Product.objects.filter(
+            style__iexact=style
+        ).exclude(id=product.id)
+
+    return render(request, 'store/product_page2.html', {
+        'product': product,
+        'reviews': reviews,
+        'recommended_products': recommended_products,
+        'tryon_url': tryon_url,     # <-- IMPORTANT
+    })
 from django.conf import settings
 from django.core.mail import send_mail, BadHeaderError
 from django.contrib import messages
@@ -729,7 +835,7 @@ def my_orders(request):
 from urllib.parse import unquote
 
 def get_insight_data():
-    scroll_logs = UserScrollLog.objects.filter(page__startswith="/product_detail/")
+    scroll_logs = UserScrollLog.objects.filter(page__startswith="/product_detail2/")
     scroll_insights = scroll_logs.values('page').annotate(
         total_scroll_time=Sum('scroll_time_seconds'),
         avg_scroll_time=Avg('scroll_time_seconds'),
@@ -737,7 +843,7 @@ def get_insight_data():
     ).order_by('-total_scroll_time')
 
     for insight in scroll_insights:
-        slug = insight['page'].split('/product_detail/')[-1]
+        slug = insight['page'].split('/product_detail2/')[-1]
         insight['product_title'] = unquote(slug)
 
     interaction_data = (

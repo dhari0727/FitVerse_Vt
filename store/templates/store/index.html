@@ -447,14 +447,14 @@
       <div class="product-box" style="margin: 20px;">
         <div class="img-wrapper">
           <div class="front">
-            <a href="{% url 'product_detail' product.Title %}">{{ product.Title }}
+            <a href="{% url 'product_detail2' product.Title %}">{{ product.Title }}
               <img src="{{ product.image.url }}" class="img-fluid blur-up lazyload bg-img" alt="{{ product.Title }}" width="600" height="600">
             </a>
           </div>
           <h5 class="card-title">{{ product.Title }}</h5>
                                                 <h4>Rs.  {{ product.dp }} <del>Rs.  {{ product.Price }}</del></h4>
           <div class="back">
-            <a href="{% url 'product_detail' product.Title %}">{{ product.Title }}
+            <a href="{% url 'product_detail2' product.Title %}">{{ product.Title }}
               <img src="{{ product.image.url }}" class="img-fluid blur-up lazyload bg-img" alt="{{ product.Title }}" width="600" height="600">
             </a>
         

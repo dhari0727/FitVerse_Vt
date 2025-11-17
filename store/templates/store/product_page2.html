@@ -306,6 +306,31 @@
         </div>
     </div>
     <!-- breadcrumb End -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const tryBtn = document.getElementById("tryon-btn");
+    const trySection = document.getElementById("tryon-section");
+    const recBtn = document.getElementById("recommendBtn");
+    const recSection = document.getElementById("recommendedSection");
+
+    function toggleSection(sectionToToggle, sectionToHide) {
+        if (sectionToToggle.style.display === "none" || window.getComputedStyle(sectionToToggle).display === "none") {
+            sectionToToggle.style.display = "block";
+            if (sectionToHide) sectionToHide.style.display = "none";
+        } else {
+            sectionToToggle.style.display = "none";
+        }
+    }
+
+    if (tryBtn && trySection) {
+        tryBtn.addEventListener("click", () => toggleSection(trySection, recSection));
+    }
+    if (recBtn && recSection) {
+        recBtn.addEventListener("click", () => toggleSection(recSection, trySection));
+    }
+});
+</script>
+
 <section>
     <div class="collection-wrapper">
         <div class="container">
@@ -313,8 +338,11 @@
 
                 <!-- LEFT SIDE IMAGE -->
                 <div class="col-lg-6">
-                    <img src="{{ product.image.url }}" alt="{{ product.Title }}" 
-                         class="img-fluid" width="400" height="350">
+                    <div class="product-slick">
+                        <div>
+                            <img src="{{ product.image.url }}" alt="{{ product.Title }}" class="img-fluid" width="400" height="350">
+                        </div>
+                    </div>
                 </div>
 
                 <!-- RIGHT SIDE DETAILS -->
@@ -323,41 +351,45 @@
                     <h4><del>Rs. {{ product.Price }}</del> <span>55% off</span></h4>
                     <h3>Rs. {{ product.dp }}</h3>
 
-                    <h4>Quantity:</h4>
+                    <h4>Quantity :</h4>
                     {% if product.stock == 0 %}
-                        <p style="color:red; font-weight:bold;">Out Of Stock</p>
-                    {% else %}
-                        <form method="POST" class="add-to-cart-form">
-                            {% csrf_token %}
-                            {% if messages %}
-                                {% for message in messages %}
-                                    <div style="color: {% if message.tags|lower == 'error' %}red{% else %}green{% endif %}; font-weight:bold;">
-                                        {{ message }}
-                                    </div>
-                                {% endfor %}
-                            {% endif %}
-                            <input type="number" name="quantity" value="1" min="1" data-stock="{{ product.stock }}">
-                            <div class="button-row" style="margin-top:10px;">
-                                <input type="submit" name="buy" class="btn btn-solid" value="Buy Now">
-                                <input type="submit" name="cart" class="btn btn-solid" value="Add To Cart">
-                            </div>
-                        </form>
+                        <p style="color: red; font-weight: bold;">Out Of Stock</p>
+                    {% endif %}
+
+                    {% if product.stock > 0 %}
+                    <!-- ADD TO CART FORM -->
+                    <form method="POST" class="add-to-cart-form">
+                        {% csrf_token %}
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div style="color: {% if message.tags == 'error' %}red{% else %}green{% endif %}; font-weight:bold;">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        <div class="qty-box">
+                            <input type="number" name="quantity" value="1" min="1" data-stock="{{ product.stock }}" data-product-id="{{ product.id }}">
+                        </div>
+
+                        <div class="button-row" style="margin-top:10px;">
+                            <input type="submit" name="buy" class="btn btn-solid" value="Buy Now">
+                            <input type="submit" name="cart" class="btn btn-solid" value="Add To Cart">
+                        </div>
+                    </form>
                     {% endif %}
 
                     <!-- BUTTONS -->
                     <div class="button-row" style="margin-top:15px;">
                         <button id="tryon-btn" class="btn btn-solid">Try On</button>
-                        {% if recommended_products %}
                         <button id="recommendBtn" class="btn btn-solid">
                             <i class="fa fa-thumbs-up"></i> Recommended
                         </button>
-                        {% endif %}
                     </div>
 
                     <!-- TRY-ON SECTION -->
-                    <div id="tryon-section" style="display:{% if tryon_url %}block{% else %}none{% endif %}; 
-                        margin-top:20px; padding:20px; border-radius:12px; background-color:#34495e; color:#ecf0f1;">
-                        <form method="POST" enctype="multipart/form-data">
+                    <div id="tryon-section" style="display:{% if tryon_url %}block{% else %}none{% endif %}; margin-top:20px; padding:20px; border-radius:12px; background-color:#34495e; color:#ecf0f1;">
+                        <form id="tryon-form" method="POST" enctype="multipart/form-data">
                             {% csrf_token %}
                             <label><strong>Upload your photo:</strong></label><br>
                             <input type="file" name="person_image" accept="image/*" required 
@@ -373,29 +405,30 @@
                         {% endif %}
                     </div>
 
-                    <!-- RECOMMENDED SECTION -->
-                    {% if recommended_products %}
+                    <!-- RECOMMENDED PRODUCTS -->
                     <div id="recommendedSection" style="display:none; margin-top:20px;">
-                        <div class="recommended-list">
-                            {% for item in recommended_products %}
-                            <div class="recommended-card">
-                                <a href="{% url 'product_detail' item.Title %}" style="text-decoration:none;">
-                                    {% if item.image %}
-                                        <img src="{{ item.image.url }}" alt="{{ item.Title }}">
-                                    {% else %}
-                                        <img src="{% static 'images/placeholder.png' %}" alt="No Image">
-                                    {% endif %}
-                                    <h6>{{ item.Title }}</h6>
-                                    <p>₹{{ item.dp }}</p>
-                                </a>
+                        {% if recommended_products %}
+                            <div class="recommended-list">
+                                {% for item in recommended_products %}
+                                    <div class="recommended-card">
+                                        <a href="{% url 'product_detail2' item.Title %}" style="text-decoration:none;">
+                                            <img src="{{ item.image.url }}" alt="{{ item.Title }}">
+                                            <h6>{{ item.Title }}</h6>
+                                            <p>₹{{ item.Price }}</p>
+                                        </a>
+                                    </div>
+                                {% endfor %}
                             </div>
-                            {% endfor %}
-                        </div>
+                        {% else %}
+                            <p>No recommendations found.</p>
+                        {% endif %}
                     </div>
-                    {% endif %}
 
                     <!-- STYLES -->
                     <style>
+                        .btn-solid { background:#2c3e50; color:#fff; padding:12px 24px; border-radius:8px; border:none; font-weight:bold; }
+                        .btn-solid:hover { opacity:0.85; }
+                        .button-row { display:flex; gap:15px; flex-wrap:wrap; }
                         .recommended-list { display:flex; gap:20px; flex-wrap:wrap; }
                         .recommended-card { width:180px; background:#f7faff; border-radius:14px; padding:12px; text-align:center; transition:0.25s; }
                         .recommended-card:hover { transform:translateY(-6px); box-shadow:0 6px 18px rgba(0,0,0,0.12); }
@@ -403,34 +436,32 @@
                         .recommended-card h6 { margin-top:10px; font-size:15px; color:#333; }
                         .recommended-card p { margin:3px 0 0; font-weight:bold; color:#222; }
                     </style>
-
                 </div>
             </div>
         </div>
     </div>
 </section>
-
 <!-- JS for Try-On and Recommendations -->
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const tryBtn = document.getElementById("tryon-btn");
     const trySection = document.getElementById("tryon-section");
     const recBtn = document.getElementById("recommendBtn");
     const recSection = document.getElementById("recommendedSection");
 
-    if (tryBtn && trySection) {
-        tryBtn.addEventListener("click", function() {
-            const isHidden = window.getComputedStyle(trySection).display === "none";
-            trySection.style.display = isHidden ? "block" : "none";
-            if (recSection) recSection.style.display = "none";
-        });
-    }
+    // Try-On section is static; no toggle on click
+    // It will always show if tryon_url exists
+    // No JS needed for tryBtn
 
+    // Recommendation toggle
     if (recBtn && recSection) {
         recBtn.addEventListener("click", function() {
             const isHidden = window.getComputedStyle(recSection).display === "none";
             recSection.style.display = isHidden ? "block" : "none";
-            if (trySection) trySection.style.display = "none";
+
+            // Update button text dynamically
+            this.innerHTML = isHidden 
+                ? '<i class="fa fa-times"></i> Hide Recommendations' 
+                : '<i class="fa fa-thumbs-up"></i> Recommended';
         });
     }
 });
